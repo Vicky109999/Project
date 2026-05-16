@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Premier League Stats Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --pl-purple: #38003c;
+      --pl-green:  #00ff85;
+      --pl-pink:   #ff2882;
+      --surface:   #12111a;
+      --card:      #1c1b27;
+      --card2:     #252438;
+      --text:      #dcdce8;
+      --muted:     #7a7a9a;
+      --border:    rgba(255,255,255,0.07);
+      --radius:    12px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--surface); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #2a003a 0%, #1a0020 100%);
+      padding: 0 2rem; display: flex; align-items: center;
+      justify-content: space-between; height: 60px;
+      border-bottom: 2px solid var(--pl-green);
+      position: sticky; top: 0; z-index: 100; gap: 1rem;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { font-size: 1.5rem; }
+    .logo-text { font-size: 1.1rem; font-weight: 800; color: #fff; white-space: nowrap; }
+    .logo-text span { color: var(--pl-green); }
+    .season-select {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); font-family: inherit; font-size: 0.825rem;
+      padding: 5px 10px; border-radius: 8px; outline: none; cursor: pointer;
+    }
+    .season-select option { background: var(--card2); }
+
+    /* ── Primary nav ── */
+    nav.primary {
+      background: var(--card); display: flex; gap: 4px;
+      padding: 10px 2rem; border-bottom: 1px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    nav.primary::-webkit-scrollbar { display: none; }
+
+    /* ── Sub-nav ── */
+    nav.subnav {
+      background: var(--surface); display: flex; gap: 6px;
+      padding: 10px 0; flex-wrap: wrap;
+    }
+
+    .tab-btn, .sub-btn {
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; border-radius: 8px; transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .tab-btn {
+      color: var(--muted); font-size: 0.875rem; font-weight: 500;
+      padding: 7px 18px;
+    }
+    .tab-btn:hover { background: var(--border); color: var(--text); }
+    .tab-btn.active { background: var(--pl-green); color: var(--pl-purple); font-weight: 700; }
+
+    .sub-btn {
+      color: var(--muted); font-size: 0.8rem; font-weight: 500;
+      padding: 5px 14px; border: 1px solid var(--border);
+    }
+    .sub-btn:hover { border-color: rgba(0,255,133,0.4); color: var(--text); }
+    .sub-btn.active {
+      border-color: var(--pl-green); color: var(--pl-green);
+      background: rgba(0,255,133,0.07); font-weight: 600;
+    }
+
+    /* ── Advanced badge ── */
+    .adv-tag {
+      display: inline-block; font-size: 0.6rem; font-weight: 700;
+      background: rgba(255,40,130,0.2); color: var(--pl-pink);
+      border-radius: 4px; padding: 1px 5px; margin-left: 4px;
+      vertical-align: middle; letter-spacing: 0.5px;
+    }
+
+    /* ── Main ── */
+    main { padding: 1.5rem 2rem; max-width: 1500px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Section headers ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;
+    }
+    .section-title {
+      font-size: 1.2rem; font-weight: 700; color: #fff;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-title::before {
+      content: ''; width: 4px; height: 20px;
+      background: var(--pl-green); border-radius: 2px; flex-shrink: 0;
+    }
+
+    /* ── Controls ── */
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .search-input, .select-input {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); font-family: inherit; font-size: 0.875rem;
+      padding: 7px 13px; border-radius: 8px; outline: none; transition: border-color 0.2s;
+    }
+    .search-input { width: 220px; }
+    .search-input:focus, .select-input:focus { border-color: var(--pl-green); }
+    .select-input option { background: var(--card2); }
+    .btn {
+      background: var(--pl-green); color: var(--pl-purple);
+      border: none; cursor: pointer; font-family: inherit;
+      font-size: 0.875rem; font-weight: 700;
+      padding: 7px 16px; border-radius: 8px; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-outline {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+    }
+    .btn-outline:hover { border-color: var(--pl-green); color: var(--pl-green); background: none; opacity: 1; }
+
+    /* ── Loading ── */
+    .loader {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 4rem 0; gap: 12px; color: var(--muted);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border); border-top-color: var(--pl-green);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; color: var(--muted); padding: 3rem 0; font-size: 0.875rem; }
+
+    /* ── Tables ── */
+    .table-wrapper { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead { background: linear-gradient(90deg, #200030 0%, #1c1b27 100%); position: sticky; top: 0; }
+    thead th {
+      padding: 10px 13px; text-align: left;
+      font-size: 0.69rem; font-weight: 600;
+      color: var(--pl-green); letter-spacing: 0.7px; text-transform: uppercase;
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    thead th:hover { color: #fff; }
+    thead th.asc::after  { content: ' ▲'; font-size: 0.6rem; }
+    thead th.desc::after { content: ' ▼'; font-size: 0.6rem; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+    tbody tr:hover { background: rgba(0,255,133,0.03); }
+    td { padding: 9px 13px; white-space: nowrap; }
+    td.name { font-weight: 600; color: #fff; }
+    td.pts  { font-weight: 700; color: var(--pl-green); }
+    td.pos  { color: var(--muted); font-size: 0.78rem; font-weight: 600; min-width: 32px; }
+
+    /* Zone row accents */
+    .ucl  { border-left: 3px solid #4fc3f7; }
+    .uel  { border-left: 3px solid #aed581; }
+    .uecl { border-left: 3px solid #ffcc02; }
+    .rel  { border-left: 3px solid var(--pl-pink); }
+
+    /* Team color dot */
+    .team-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: middle; flex-shrink: 0; }
+    .team-cell { display: flex; align-items: center; }
+
+    /* Promotion badge */
+    .promo-badge { display: inline-block; font-size: 0.67rem; font-weight: 600; padding: 2px 7px; border-radius: 10px; }
+    .promo-ucl  { background: rgba(79,195,247,0.15); color: #4fc3f7; }
+    .promo-uel  { background: rgba(174,213,129,0.15); color: #aed581; }
+    .promo-uecl { background: rgba(255,204,2,0.15);  color: #ffcc02; }
+    .promo-rel  { background: rgba(255,40,130,0.15); color: var(--pl-pink); }
+
+    /* Stat highlights */
+    .hi-green { color: var(--pl-green); font-weight: 600; }
+    .hi-gold  { color: gold; font-weight: 600; }
+    .hi-pink  { color: var(--pl-pink); font-weight: 600; }
+    .hi-blue  { color: #4fc3f7; font-weight: 600; }
+    .hi-orange{ color: #ff8a65; font-weight: 600; }
+    .hi-xg    { color: #c084fc; font-weight: 600; }  /* purple for xG */
+
+    /* xG delta: positive = over-performing, negative = under */
+    .delta-pos { color: var(--pl-green); font-size: 0.78rem; }
+    .delta-neg { color: var(--pl-pink);  font-size: 0.78rem; }
+
+    /* Tooltip on th */
+    thead th[title] { cursor: help; border-bottom: 1px dashed rgba(0,255,133,0.3); }
+
+    /* ── Top performers cards ── */
+    .perf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .perf-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+    .perf-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+    .perf-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 0; border-bottom: 1px solid var(--border);
+    }
+    .perf-row:last-child { border-bottom: none; }
+    .perf-rank { font-size: 0.72rem; color: var(--muted); min-width: 22px; font-weight: 600; }
+    .perf-val  { font-size: 1.05rem; font-weight: 800; min-width: 44px; }
+    .perf-info { display: flex; flex-direction: column; gap: 1px; }
+    .perf-name { font-size: 0.825rem; font-weight: 600; color: #fff; }
+    .perf-team { font-size: 0.73rem; color: var(--muted); }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 1rem; font-size: 0.75rem; color: var(--muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .l-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* ── Pagination ── */
+    .pagination { display: flex; align-items: center; gap: 6px; margin-top: 1rem; justify-content: center; flex-wrap: wrap; }
+    .pg-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); cursor: pointer; font-family: inherit;
+      font-size: 0.8rem; padding: 5px 11px; border-radius: 6px; transition: all 0.15s;
+    }
+    .pg-btn:hover, .pg-btn.active { background: var(--pl-green); color: var(--pl-purple); border-color: var(--pl-green); font-weight: 700; }
+    .pg-btn:disabled { opacity: 0.3; cursor: default; }
+    .pg-info { color: var(--muted); font-size: 0.78rem; margin-left: 6px; }
+
+    /* ── Info box ── */
+    .info-box {
+      background: rgba(192,132,252,0.07); border: 1px solid rgba(192,132,252,0.2);
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 1rem;
+      font-size: 0.8rem; color: #c084fc; line-height: 1.5;
+    }
+
+    @media (max-width: 700px) {
+      main { padding: 1rem; }
+      nav.primary { padding: 8px 1rem; }
+      header { padding: 0 1rem; }
+      .search-input { width: 100%; }
+      .perf-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <span class="logo-icon">⚽</span>
+    <div class="logo-text">Premier <span>League</span> Stats</div>
+  </div>
+  <select class="season-select" id="season-select" onchange="onSeasonChange()">
+    <option value="25/26">Season 25/26</option>
+    <option value="24/25">Season 24/25</option>
+    <option value="23/24">Season 23/24</option>
+  </select>
+</header>
+
+<!-- ── Primary Nav ── -->
+<nav class="primary">
+  <button class="tab-btn active" data-panel="standings">🏆 Standings</button>
+  <button class="tab-btn" data-panel="team-stats">🛡 Team Stats</button>
+  <button class="tab-btn" data-panel="players">👟 Player Stats</button>
+  <button class="tab-btn" data-panel="top-performers">⭐ Top Performers</button>
+</nav>
+
+<!-- ── Main Content ── -->
+<main>
+
+  <!-- ══════════ STANDINGS ══════════ -->
+  <div class="panel active" id="panel-standings">
+    <div class="section-header">
+      <div class="section-title">League Table</div>
+      <button class="btn btn-outline" onclick="loadStandings(true)">↻ Refresh</button>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="l-dot" style="background:#4fc3f7"></div>Champions League</div>
+      <div class="legend-item"><div class="l-dot" style="background:#aed581"></div>Europa League</div>
+      <div class="legend-item"><div class="l-dot" style="background:#ffcc02"></div>Conference League</div>
+      <div class="legend-item"><div class="l-dot" style="background:var(--pl-pink)"></div>Relegation</div>
+    </div>
+    <div id="standings-container"><div class="loader"><div class="spinner"></div><span>Loading standings…</span></div></div>
+  </div>
+
+  <!-- ══════════ TEAM STATS ══════════ -->
+  <div class="panel" id="panel-team-stats">
+    <div class="section-header">
+      <div class="section-title">Squad Statistics</div>
+      <div class="controls">
+        <nav class="subnav" id="team-subnav">
+          <button class="sub-btn active" data-tsub="attack"    onclick="switchTeamSub(this,'attack')">⚔️ Attack</button>
+          <button class="sub-btn"        data-tsub="passing"   onclick="switchTeamSub(this,'passing')">🎯 Passing</button>
+          <button class="sub-btn"        data-tsub="defense"   onclick="switchTeamSub(this,'defense')">🛡 Defense</button>
+          <button class="sub-btn"        data-tsub="discipline" onclick="switchTeamSub(this,'discipline')">🟨 Discipline</button>
+        </nav>
+        <button class="btn btn-outline" onclick="loadTeamStats(true)">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="team-stats-container"><div class="loader"><div class="spinner"></div><span>Loading team stats…</span></div></div>
+  </div>
+
+  <!-- ══════════ PLAYER STATS ══════════ -->
+  <div class="panel" id="panel-players">
+    <div class="section-header">
+      <div class="section-title">Player Stats</div>
+      <div class="controls">
+        <div style="position:relative;display:flex;align-items:center;">
+          <input class="search-input" id="player-search" type="text" placeholder="Search name or club…" style="padding-right:32px;" autocomplete="off" />
+          <button id="search-clear-btn" onclick="clearPlayerSearch()" title="Clear search"
+            style="display:none;position:absolute;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1;padding:0;">✕</button>
+        </div>
+        <button class="btn" onclick="doPlayerSearch()">Search</button>
+      </div>
+    </div>
+    <div id="search-status" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.5rem;display:none;"></div>
+
+    <nav class="subnav" id="player-subnav" style="margin-bottom:1rem">
+      <button class="sub-btn active" data-ptype="standard"   onclick="switchPlayerType(this,'standard')">📊 Standard</button>
+      <button class="sub-btn"        data-ptype="expected"   onclick="switchPlayerType(this,'expected')">🔮 Expected Goals &amp; Assists</button>
+      <button class="sub-btn"        data-ptype="shooting"   onclick="switchPlayerType(this,'shooting')">⚽ Shooting</button>
+      <button class="sub-btn"        data-ptype="passing"    onclick="switchPlayerType(this,'passing')">🎯 Passing &amp; Creation</button>
+      <button class="sub-btn"        data-ptype="defense"    onclick="switchPlayerType(this,'defense')">🛡 Defending</button>
+      <button class="sub-btn"        data-ptype="discipline" onclick="switchPlayerType(this,'discipline')">🟨 Discipline</button>
+      <button class="sub-btn"        data-ptype="keeper"     onclick="switchPlayerType(this,'keeper')">🧤 Goalkeepers</button>
+      <button class="sub-btn"        data-ptype="keeper_adv" onclick="switchPlayerType(this,'keeper_adv')">🧤 Goalkeeper Advanced Stats</button>
+    </nav>
+
+    <div id="player-info-box" class="info-box" style="display:none"></div>
+    <div id="player-container"><div class="loader"><div class="spinner"></div><span>Loading player stats…</span></div></div>
+    <div class="pagination" id="player-pagination"></div>
+  </div>
+
+  <!-- ══════════ TOP PERFORMERS ══════════ -->
+  <div class="panel" id="panel-top-performers">
+    <div class="section-header">
+      <div class="section-title">Top Performers</div>
+      <button class="btn btn-outline" onclick="loadTopPerformers(true)">↻ Refresh</button>
+    </div>
+    <div id="top-container"><div class="loader"><div class="spinner"></div><span>Loading…</span></div></div>
+  </div>
+
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentPage  = 0;
+let currentPType = 'standard';
+let currentTSub  = 'attack';
+let teamStatsAll = [];  // cache full team data
+
+function getSeason() { return document.getElementById('season-select').value; }
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    if (btn.dataset.panel === 'standings')      loadStandings();
+    if (btn.dataset.panel === 'team-stats')     loadTeamStats();
+    if (btn.dataset.panel === 'players')        loadPlayerPage(0);
+    if (btn.dataset.panel === 'top-performers') loadTopPerformers();
+  });
+});
+
+function onSeasonChange() {
+  const panel = document.querySelector('.tab-btn.active')?.dataset.panel;
+  if (panel === 'standings')      loadStandings(true);
+  if (panel === 'team-stats')     { teamStatsAll = []; loadTeamStats(true); }
+  if (panel === 'players')        { currentPage = 0; Object.keys(playerCache).forEach(k => delete playerCache[k]); loadPlayerPage(0, true); }
+  if (panel === 'top-performers') loadTopPerformers(true);
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+const loaderHTML = msg => `<div class="loader"><div class="spinner"></div><span>${msg}</span></div>`;
+const errHTML    = msg => `<div class="empty-msg">⚠️ ${msg}</div>`;
+const fmt        = v   => (v == null || v === '') ? '—' : v;
+const qs         = p   => '?' + new URLSearchParams(p).toString();
+const bust       = f   => f ? { _b: Date.now() } : {};
+
+function xgDelta(actual, expected) {
+  if (actual == null || expected == null) return '';
+  const d = (parseFloat(actual) - parseFloat(expected)).toFixed(2);
+  const cls = d >= 0 ? 'delta-pos' : 'delta-neg';
+  return ` <span class="${cls}">(${d >= 0 ? '+' : ''}${d})</span>`;
+}
+
+// ── Standings ──────────────────────────────────────────────────────────────
+async function loadStandings(force = false) {
+  const el = document.getElementById('standings-container');
+  el.innerHTML = loaderHTML('Fetching standings…');
+  try {
+    const r    = await fetch('/api/standings' + qs({ season: getSeason(), ...bust(force) }));
+    const rows = await r.json();
+    if (!rows.length) { el.innerHTML = errHTML('No data.'); return; }
+    el.innerHTML = buildStandingsTable(rows);
+  } catch(e) { el.innerHTML = errHTML(e.message); }
+}
+
+function buildStandingsTable(rows) {
+  const cols = [
+    { k:'position', l:'Position'        },
+    { k:'team',     l:'Club'            },
+    { k:'played',   l:'Matches Played'  },
+    { k:'wins',     l:'Wins'            },
+    { k:'draws',    l:'Draws'           },
+    { k:'losses',   l:'Losses'          },
+    { k:'gf',       l:'Goals Scored'    },
+    { k:'ga',       l:'Goals Conceded'  },
+    { k:'gd',       l:'Goal Difference' },
+    { k:'points',   l:'Points'          },
+    { k:'promotion',l:'Status'          },
+  ];
+  let html = `<div class="table-wrapper"><table><thead><tr>`;
+  cols.forEach(c => html += `<th>${c.l}</th>`);
+  html += `</tr></thead><tbody>`;
+  rows.forEach(row => {
+    const promo = (row.promotion || '').toLowerCase();
+    const rowCls   = promo.includes('champions') ? 'ucl' : promo.includes('europa') ? 'uel' : promo.includes('conference') ? 'uecl' : promo.includes('relegat') ? 'rel' : '';
+    const promoCls = promo.includes('champions') ? 'promo-ucl' : promo.includes('europa') ? 'promo-uel' : promo.includes('conference') ? 'promo-uecl' : promo.includes('relegat') ? 'promo-rel' : '';
+    html += `<tr class="${rowCls}">`;
+    cols.forEach(c => {
+      if      (c.k === 'position')  html += `<td class="pos">${fmt(row[c.k])}</td>`;
+      else if (c.k === 'team')      html += `<td class="name"><div class="team-cell"><span class="team-dot" style="background:${row.team_color||'#888'}"></span>${fmt(row[c.k])}</div></td>`;
+      else if (c.k === 'points')    html += `<td class="pts">${fmt(row[c.k])}</td>`;
+      else if (c.k === 'promotion') {
+        const t = fmt(row[c.k]);
+        html += t !== '—' ? `<td><span class="promo-badge ${promoCls}">${t}</span></td>` : `<td>—</td>`;
+      } else html += `<td>${fmt(row[c.k])}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ── Team Stats ─────────────────────────────────────────────────────────────
+async function loadTeamStats(force = false) {
+  if (!teamStatsAll.length || force) {
+    const el = document.getElementById('team-stats-container');
+    el.innerHTML = loaderHTML('Fetching all 20 teams… (~30s first load, then cached)');
+    try {
+      const r = await fetch('/api/team-stats' + qs({ season: getSeason(), ...bust(force) }));
+      teamStatsAll = await r.json();
+    } catch(e) { document.getElementById('team-stats-container').innerHTML = errHTML(e.message); return; }
+  }
+  renderTeamSub();
+}
+
+function switchTeamSub(btn, sub) {
+  document.querySelectorAll('#team-subnav .sub-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTSub = sub;
+  renderTeamSub();
+}
+
+const TEAM_COLS = {
+  attack: [
+    { k:'position',           l:'Position' },
+    { k:'team',               l:'Club' },
+    { k:'played',             l:'Matches Played' },
+    { k:'goals',              l:'Goals Scored',              hi:'hi-green', tip:'Total goals scored' },
+    { k:'conceded',           l:'Goals Conceded',            tip:'Total goals conceded' },
+    { k:'shots',              l:'Total Shots',               tip:'Total shots attempted' },
+    { k:'shots_on_target',    l:'Shots on Target',           tip:'Shots that hit the target' },
+    { k:'shot_acc_%',         l:'Shot Accuracy %',           tip:'Percentage of shots on target' },
+    { k:'big_chances',        l:'Big Chances',               tip:'High-probability scoring opportunities' },
+    { k:'big_chances_created',l:'Big Chances Created',       tip:'High-probability chances created for teammates' },
+    { k:'big_chances_missed', l:'Big Chances Missed',        hi:'hi-pink', tip:'High-probability chances wasted' },
+    { k:'big_chances_against',l:'Big Chances Against',       tip:'High-probability chances conceded to opponents' },
+    { k:'hit_woodwork',       l:'Hit Woodwork',              tip:'Times the ball hit the post or crossbar' },
+    { k:'fast_break_goals',   l:'Fast Break Goals',          tip:'Goals scored on fast counter-attacks' },
+    { k:'headed_goals',       l:'Headed Goals',              tip:'Goals scored with a header' },
+    { k:'penalty_goals',      l:'Penalty Goals',             tip:'Goals scored from the penalty spot' },
+  ],
+  passing: [
+    { k:'position',       l:'Position' },
+    { k:'team',           l:'Club' },
+    { k:'played',         l:'Matches Played' },
+    { k:'possession_%',   l:'Average Possession %',   hi:'hi-blue',  tip:'Average percentage of ball possession per match' },
+    { k:'pass_acc_%',     l:'Pass Accuracy %',        hi:'hi-green', tip:'Percentage of passes successfully completed' },
+    { k:'long_ball_acc_%',l:'Long Ball Accuracy %',   tip:'Percentage of long balls successfully completed' },
+    { k:'cross_acc_%',    l:'Cross Accuracy %',       tip:'Percentage of crosses successfully completed' },
+    { k:'assists',        l:'Total Assists',          tip:'Total goal assists across the season' },
+  ],
+  defense: [
+    { k:'position',        l:'Position' },
+    { k:'team',            l:'Club' },
+    { k:'played',          l:'Matches Played' },
+    { k:'clean_sheets',    l:'Clean Sheets',           hi:'hi-blue', tip:'Matches where no goals were conceded' },
+    { k:'saves',           l:'Goalkeeper Saves',       tip:'Total saves made by the goalkeeper' },
+    { k:'tackles',         l:'Tackles',                tip:'Total tackles made' },
+    { k:'interceptions',   l:'Interceptions',          tip:'Total interceptions made' },
+    { k:'clearances',      l:'Clearances',             tip:'Total clearances made' },
+    { k:'aerial_won_%',    l:'Aerial Duels Won %',     tip:'Percentage of aerial duels won' },
+    { k:'duel_won_%',      l:'All Duels Won %',        tip:'Percentage of all duels (aerial + ground) won' },
+    { k:'errors_goal',     l:'Errors Leading to Goal', hi:'hi-pink', tip:'Defensive errors that directly led to a goal' },
+  ],
+  discipline: [
+    { k:'position',     l:'Position' },
+    { k:'team',         l:'Club' },
+    { k:'played',       l:'Matches Played' },
+    { k:'yellow_cards', l:'Yellow Cards',   hi:'hi-gold', tip:'Total yellow cards received' },
+    { k:'red_cards',    l:'Red Cards',      hi:'hi-pink', tip:'Total red cards received' },
+    { k:'fouls',        l:'Fouls Committed', tip:'Total fouls committed' },
+    { k:'offsides',     l:'Offsides',        tip:'Total times caught offside' },
+  ],
+};
+
+function renderTeamSub() {
+  const el   = document.getElementById('team-stats-container');
+  const rows = teamStatsAll;
+  if (!rows.length) { el.innerHTML = errHTML('No data.'); return; }
+  const cols = TEAM_COLS[currentTSub] || TEAM_COLS.attack;
+
+  let html = `<div class="table-wrapper"><table><thead><tr>`;
+  cols.forEach(c => html += `<th${c.tip ? ` title="${c.tip}"` : ''}>${c.l}</th>`);
+  html += `</tr></thead><tbody>`;
+  rows.forEach(row => {
+    html += `<tr>`;
+    cols.forEach(c => {
+      const v = fmt(row[c.k]);
+      if      (c.k === 'position') html += `<td class="pos">${v}</td>`;
+      else if (c.k === 'team')     html += `<td class="name">${v}</td>`;
+      else if (c.hi)               html += `<td class="${c.hi}">${v}</td>`;
+      else                         html += `<td>${v}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+// ── Player Stats ───────────────────────────────────────────────────────────
+const PTYPE_INFO = {
+  expected:   '🔮 Expected Goals (xG) measures the quality of chances a player had. Expected Assists (xA) measures the quality of passes that led to shots. "Goals vs Expected" shows whether a player is over or under-performing their xG.',
+  keeper_adv: '🧤 Expected Goals Conceded (xGC) is how many goals the keeper was statistically expected to let in. Post-Shot xG Performance = Saves − xGC: a positive number means the keeper performed better than expected.',
+};
+
+async function loadPlayerPage(page, force = false) {
+  currentPage = page;
+  const el = document.getElementById('player-container');
+  el.innerHTML = loaderHTML('Fetching player stats…');
+  document.getElementById('player-pagination').innerHTML = '';
+
+  const infoBox = document.getElementById('player-info-box');
+  const info = PTYPE_INFO[currentPType];
+  if (info) { infoBox.textContent = info; infoBox.style.display = ''; }
+  else       { infoBox.style.display = 'none'; }
+
+  try {
+    const r    = await fetch('/api/players' + qs({ type: currentPType, season: getSeason(), page, page_size: 50, ...bust(force) }));
+    const data = await r.json();
+    const rows = data.results || [];
+    if (!rows.length) { el.innerHTML = errHTML('No data.'); return; }
+    el.innerHTML = buildPlayerTable(rows, currentPType);
+    renderPagination(page, data.total_pages);
+  } catch(e) { el.innerHTML = errHTML(e.message); }
+}
+
+// Cache of ALL players per stat-type+season for fast client-side search
+const playerCache = {};
+
+async function fetchAllPlayers(ptype, season) {
+  const cacheKey = `${ptype}__${season}`;
+  if (playerCache[cacheKey]) return playerCache[cacheKey];
+
+  // Fetch page 0 first to discover total_pages
+  const first = await fetch('/api/players' + qs({ type: ptype, season, page: 0, page_size: 50 }));
+  const firstData = await first.json();
+  const totalPages = firstData.total_pages || 1;
+  let all = firstData.results || [];
+
+  // Fetch remaining pages in parallel (cap at 20 pages = 1000 players)
+  const remaining = Math.min(totalPages - 1, 19);
+  if (remaining > 0) {
+    const fetches = [];
+    for (let p = 1; p <= remaining; p++) {
+      fetches.push(
+        fetch('/api/players' + qs({ type: ptype, season, page: p, page_size: 50 }))
+          .then(r => r.json())
+          .then(d => d.results || [])
+      );
+    }
+    const pages = await Promise.all(fetches);
+    pages.forEach(rows => { all = all.concat(rows); });
+  }
+
+  playerCache[cacheKey] = all;
+  return all;
+}
+
+async function doPlayerSearch() {
+  const query = document.getElementById('player-search').value.trim();
+
+  // Show/hide clear button
+  document.getElementById('search-clear-btn').style.display = query ? 'block' : 'none';
+
+  if (!query) {
+    clearPlayerSearch();
+    return;
+  }
+
+  const el         = document.getElementById('player-container');
+  const statusEl   = document.getElementById('search-status');
+  el.innerHTML     = loaderHTML('Searching across all players…');
+  document.getElementById('player-pagination').innerHTML = '';
+  statusEl.style.display = 'none';
+
+  try {
+    const all = await fetchAllPlayers(currentPType, getSeason());
+    const q   = query.toLowerCase();
+    const rows = all.filter(p =>
+      (p.player || '').toLowerCase().includes(q) ||
+      (p.team   || '').toLowerCase().includes(q)
+    );
+
+    if (!rows.length) {
+      el.innerHTML = errHTML(`No players found matching "<strong>${query}</strong>".`);
+      statusEl.style.display = 'none';
+      return;
+    }
+
+    el.innerHTML = buildPlayerTable(rows, currentPType);
+    statusEl.textContent = `${rows.length} player${rows.length !== 1 ? 's' : ''} found for "${query}"`;
+    statusEl.style.display = 'block';
+  } catch(e) {
+    el.innerHTML = errHTML('Search failed: ' + e.message);
+  }
+}
+
+function clearPlayerSearch() {
+  document.getElementById('player-search').value = '';
+  document.getElementById('search-clear-btn').style.display = 'none';
+  document.getElementById('search-status').style.display = 'none';
+  currentPage = 0;
+  loadPlayerPage(0);
+}
+
+function switchPlayerType(btn, ptype) {
+  document.querySelectorAll('#player-subnav .sub-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPType = ptype;
+  document.getElementById('player-search').value = '';
+  document.getElementById('search-clear-btn').style.display = 'none';
+  document.getElementById('search-status').style.display = 'none';
+  currentPage = 0;
+  loadPlayerPage(0);
+}
+
+// Column metadata per stat type
+const PLAYER_COLS = {
+  standard: [
+    { k:'player',       l:'Player' },
+    { k:'team',         l:'Club' },
+    { k:'appearances',  l:'Appearances' },
+    { k:'minutesPlayed',l:'Minutes Played' },
+    { k:'goals',        l:'Goals',        hi:'hi-green' },
+    { k:'assists',      l:'Assists',      hi:'hi-blue' },
+    { k:'yellowCards',  l:'Yellow Cards', hi:'hi-gold' },
+    { k:'redCards',     l:'Red Cards',    hi:'hi-pink' },
+    { k:'rating',       l:'Rating',       fn:'rating' },
+  ],
+  expected: [
+    { k:'player',               l:'Player' },
+    { k:'team',                 l:'Club' },
+    { k:'appearances',          l:'Appearances' },
+    { k:'minutesPlayed',        l:'Minutes Played' },
+    { k:'goals',                l:'Goals',                    hi:'hi-green' },
+    { k:'expectedGoals',        l:'Expected Goals (xG)',      hi:'hi-xg',   tip:'The number of goals a player was statistically expected to score based on shot quality' },
+    { k:'_xg_delta',            l:'Goals vs Expected',        fn:'xgdelta', tip:'Actual goals minus Expected Goals — positive means over-performing, negative means under-performing' },
+    { k:'assists',              l:'Assists',                  hi:'hi-blue' },
+    { k:'expectedAssists',      l:'Expected Assists (xA)',    hi:'hi-xg',   tip:'The number of assists a player was statistically expected to provide based on pass quality' },
+    { k:'expectedGoalsOnTarget',l:'Expected Goals On Target', hi:'hi-xg',   tip:'Expected goals from shots that were on target only' },
+    { k:'bigChancesCreated',    l:'Big Chances Created',      tip:'High-probability scoring chances created for teammates' },
+    { k:'bigChancesMissed',     l:'Big Chances Missed',       hi:'hi-pink', tip:'High-probability scoring chances the player failed to convert' },
+    { k:'totalShots',           l:'Total Shots' },
+    { k:'shotsOnTarget',        l:'Shots on Target' },
+  ],
+  shooting: [
+    { k:'player',                  l:'Player' },
+    { k:'team',                    l:'Club' },
+    { k:'appearances',             l:'Appearances' },
+    { k:'goals',                   l:'Goals',               hi:'hi-green' },
+    { k:'totalShots',              l:'Total Shots',         tip:'All shots attempted including blocked' },
+    { k:'shotsOnTarget',           l:'Shots on Target',     tip:'Shots that forced a save or went in' },
+    { k:'shotsOffTarget',          l:'Shots off Target',    tip:'Shots that missed the goal entirely' },
+    { k:'goalConversionPercentage',l:'Conversion Rate %',   tip:'Percentage of shots that resulted in a goal' },
+    { k:'bigChancesCreated',       l:'Big Chances Created', tip:'High-probability chances created for teammates' },
+    { k:'bigChancesMissed',        l:'Big Chances Missed',  hi:'hi-pink', tip:'High-probability chances the player failed to convert' },
+    { k:'penaltyGoals',            l:'Penalty Goals',       tip:'Goals scored from the penalty spot' },
+    { k:'leftFootGoals',           l:'Left Foot Goals',     tip:'Goals scored with the left foot' },
+    { k:'rightFootGoals',          l:'Right Foot Goals',    tip:'Goals scored with the right foot' },
+    { k:'headedGoals',             l:'Headed Goals',        tip:'Goals scored with a header' },
+    { k:'hitWoodwork',             l:'Hit Woodwork',        tip:'Times the ball hit the post or crossbar' },
+  ],
+  passing: [
+    { k:'player',            l:'Player' },
+    { k:'team',              l:'Club' },
+    { k:'appearances',       l:'Appearances' },
+    { k:'assists',           l:'Assists',               hi:'hi-blue' },
+    { k:'expectedAssists',   l:'Expected Assists (xA)', hi:'hi-xg', tip:'Statistically expected assists based on pass quality' },
+    { k:'keyPasses',         l:'Key Passes',            tip:'Passes that directly lead to a shot on goal' },
+    { k:'bigChancesCreated', l:'Big Chances Created',   tip:'High-probability scoring chances created' },
+    { k:'accuratePasses',    l:'Accurate Passes',       tip:'Successfully completed passes' },
+    { k:'inaccuratePasses',  l:'Inaccurate Passes',     tip:'Passes that failed to reach a teammate' },
+    { k:'accurateLongBalls', l:'Accurate Long Balls',   tip:'Successfully completed long-range passes' },
+    { k:'accurateCrosses',   l:'Accurate Crosses',      tip:'Successfully completed crosses into the box' },
+    { k:'successfulDribbles',l:'Successful Dribbles',   tip:'Times the player successfully dribbled past an opponent' },
+    { k:'minutesPlayed',     l:'Minutes Played' },
+  ],
+  defense: [
+    { k:'player',        l:'Player' },
+    { k:'team',          l:'Club' },
+    { k:'appearances',   l:'Appearances' },
+    { k:'minutesPlayed', l:'Minutes Played' },
+    { k:'tackles',       l:'Tackles',              hi:'hi-orange', tip:'Total tackles successfully made' },
+    { k:'interceptions', l:'Interceptions',        hi:'hi-blue',   tip:'Times the player intercepted a pass' },
+    { k:'clearances',    l:'Clearances',           tip:'Times the player cleared the ball from danger' },
+    { k:'blockedShots',  l:'Blocked Shots',        tip:'Times the player blocked a shot with their body' },
+    { k:'dribbledPast',  l:'Times Dribbled Past',  hi:'hi-pink', tip:'Times an opponent successfully dribbled past this player' },
+    { k:'aerialDuelsWon',l:'Aerial Duels Won',     tip:'Headers and aerial challenges won' },
+    { k:'groundDuelsWon',l:'Ground Duels Won',     tip:'Ground-level one-on-one challenges won' },
+    { k:'errors',        l:'Errors Leading to Shot',hi:'hi-pink', tip:'Defensive mistakes that directly led to an opponent shot' },
+    { k:'rating',        l:'Rating',               fn:'rating' },
+  ],
+  discipline: [
+    { k:'player',       l:'Player' },
+    { k:'team',         l:'Club' },
+    { k:'appearances',  l:'Appearances' },
+    { k:'minutesPlayed',l:'Minutes Played' },
+    { k:'yellowCards',  l:'Yellow Cards', hi:'hi-gold' },
+    { k:'redCards',     l:'Red Cards',    hi:'hi-pink' },
+    { k:'fouls',        l:'Fouls Committed', tip:'Total fouls committed during the season' },
+    { k:'offsides',     l:'Times Offside',   tip:'Total times caught in an offside position' },
+    { k:'rating',       l:'Rating',       fn:'rating' },
+  ],
+  keeper: [
+    { k:'player',                       l:'Player' },
+    { k:'team',                         l:'Club' },
+    { k:'appearances',                  l:'Appearances' },
+    { k:'minutesPlayed',                l:'Minutes Played' },
+    { k:'saves',                        l:'Saves',                        hi:'hi-green' },
+    { k:'cleanSheets',                  l:'Clean Sheets',                 hi:'hi-blue' },
+    { k:'goalsConceded',                l:'Goals Conceded',               hi:'hi-pink' },
+    { k:'savedShotsFromInsideTheBox',   l:'Saves (Inside the Box)',       tip:'Saves made from shots taken inside the penalty area' },
+    { k:'savedShotsFromOutsideTheBox',  l:'Saves (Outside the Box)',      tip:'Saves made from shots taken outside the penalty area' },
+    { k:'goalsConcededInsideTheBox',    l:'Goals Conceded (Inside Box)',  tip:'Goals conceded from shots inside the penalty area' },
+    { k:'goalsConcededOutsideTheBox',   l:'Goals Conceded (Outside Box)', tip:'Goals conceded from shots outside the penalty area' },
+  ],
+  keeper_adv: [
+    { k:'player',                       l:'Player' },
+    { k:'team',                         l:'Club' },
+    { k:'appearances',                  l:'Appearances' },
+    { k:'minutesPlayed',                l:'Minutes Played' },
+    { k:'saves',                        l:'Saves',                            hi:'hi-green' },
+    { k:'cleanSheets',                  l:'Clean Sheets',                     hi:'hi-blue' },
+    { k:'goalsConceded',                l:'Goals Conceded',                   hi:'hi-pink' },
+    { k:'expectedGoalsConceded',        l:'Expected Goals Conceded (xGC)',    hi:'hi-xg',  tip:'The number of goals the goalkeeper was statistically expected to concede based on shot quality faced' },
+    { k:'_psxg',                        l:'Post-Shot xG Performance',         fn:'psxg',   tip:'Saves minus Expected Goals Conceded — positive means the keeper saved more than expected' },
+    { k:'savedShotsFromInsideTheBox',   l:'Saves (Inside the Box)',           tip:'Saves from shots taken inside the penalty area' },
+    { k:'savedShotsFromOutsideTheBox',  l:'Saves (Outside the Box)',          tip:'Saves from shots taken outside the penalty area' },
+    { k:'goalsConcededInsideTheBox',    l:'Goals Conceded (Inside Box)',      tip:'Goals conceded from inside the penalty area' },
+    { k:'goalsConcededOutsideTheBox',   l:'Goals Conceded (Outside Box)',     tip:'Goals conceded from outside the penalty area' },
+    { k:'highClaims',                   l:'High Ball Claims',                 tip:'Times the keeper caught or claimed a high cross' },
+    { k:'punches',                      l:'Punches',                          tip:'Times the keeper punched the ball clear' },
+    { k:'runsOut',                      l:'Runs Out of Area',                 tip:'Times the keeper came off their line to intercept a through ball' },
+  ],
+};
+
+function buildPlayerTable(rows, ptype) {
+  const cols = PLAYER_COLS[ptype] || PLAYER_COLS.standard;
+
+  let html = `<div class="table-wrapper"><table><thead><tr>`;
+  cols.forEach(c => html += `<th${c.tip ? ` title="${c.tip}"` : ''}>${c.l}</th>`);
+  html += `</tr></thead><tbody>`;
+
+  rows.forEach(row => {
+    html += `<tr>`;
+    cols.forEach(c => {
+      // Virtual / computed columns
+      if (c.k === '_xg_delta') {
+        html += `<td>${xgDelta(row.goals, row.expectedGoals)}</td>`;
+        return;
+      }
+      if (c.k === '_psxg') {
+        // PSxG = Saves – xGC (positive means GK saved more than expected)
+        const saves = parseFloat(row.saves);
+        const xgc   = parseFloat(row.expectedGoalsConceded);
+        if (!isNaN(saves) && !isNaN(xgc)) {
+          const d   = (saves - xgc).toFixed(2);
+          const cls = d >= 0 ? 'delta-pos' : 'delta-neg';
+          html += `<td class="${cls}">${d >= 0 ? '+' : ''}${d}</td>`;
+        } else {
+          html += `<td>—</td>`;
+        }
+        return;
+      }
+
+      const v = fmt(row[c.k]);
+      if (c.fn === 'rating') {
+        const n   = parseFloat(row[c.k]);
+        const cls = n >= 7.5 ? 'hi-green' : n >= 7 ? 'hi-gold' : '';
+        html += `<td class="${cls}">${v}</td>`;
+      } else if (c.k === 'player') {
+        html += `<td class="name">${v}</td>`;
+      } else if (c.hi) {
+        html += `<td class="${c.hi}">${v}</td>`;
+      } else {
+        html += `<td>${v}</td>`;
+      }
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderPagination(page, pages) {
+  const el = document.getElementById('player-pagination');
+  if (!pages || pages <= 1) { el.innerHTML = ''; return; }
+  let html = `<button class="pg-btn" onclick="loadPlayerPage(${page-1})" ${page===0?'disabled':''}>‹ Prev</button>`;
+  const r = 2;
+  for (let i = 0; i < pages; i++) {
+    if (i === 0 || i === pages-1 || (i >= page-r && i <= page+r)) {
+      html += `<button class="pg-btn ${i===page?'active':''}" onclick="loadPlayerPage(${i})">${i+1}</button>`;
+    } else if (i === page-r-1 || i === page+r+1) {
+      html += `<span style="color:var(--muted);padding:0 4px">…</span>`;
+    }
+  }
+  html += `<button class="pg-btn" onclick="loadPlayerPage(${page+1})" ${page===pages-1?'disabled':''}>Next ›</button>`;
+  html += `<span class="pg-info">Page ${page+1} of ${pages}</span>`;
+  el.innerHTML = html;
+}
+
+// ── Top Performers ─────────────────────────────────────────────────────────
+async function loadTopPerformers(force = false) {
+  const el = document.getElementById('top-container');
+  el.innerHTML = loaderHTML('Loading top performers…');
+  try {
+    const r    = await fetch('/api/top-performers' + qs({ season: getSeason(), ...bust(force) }));
+    const data = await r.json();
+    el.innerHTML = buildTopPerformers(data);
+  } catch(e) { el.innerHTML = errHTML(e.message); }
+}
+
+const TOP_SECTIONS = [
+  { key:'top_scorers',    label:'⚽ Top Goal Scorers',               stat:'goals',           col:'hi-green',  tip:null },
+  { key:'top_xg',         label:'🔮 Expected Goals Leaders',         stat:'expectedGoals',   col:'hi-xg',     tip:'Expected Goals (xG) — based on chance quality' },
+  { key:'top_assists',    label:'🎯 Top Assist Providers',           stat:'assists',         col:'hi-blue',   tip:null },
+  { key:'top_xa',         label:'🔮 Expected Assists Leaders',       stat:'expectedAssists', col:'hi-xg',     tip:'Expected Assists (xA) — based on pass quality' },
+  { key:'top_ratings',    label:'⭐ Highest Rated Players',          stat:'rating',          col:'hi-gold',   tip:null },
+  { key:'top_key_passes', label:'🧩 Most Key Passes',                stat:'keyPasses',       col:'hi-orange', tip:'Key passes directly lead to a shot on goal' },
+  { key:'top_saves',      label:'🧤 Most Saves (Goalkeepers)',       stat:'saves',           col:'hi-blue',   tip:null },
+  { key:'top_tackles',    label:'💪 Most Tackles',                   stat:'tackles',         col:'hi-orange', tip:null },
+  { key:'top_shooters',   label:'🎯 Most Shots Attempted',           stat:'totalShots',      col:'',          tip:null },
+];
+
+function buildTopPerformers(data) {
+  let html = `<div class="perf-grid">`;
+  TOP_SECTIONS.forEach(s => {
+    const rows = data[s.key] || [];
+    if (!rows.length) return;
+    html += `<div class="perf-section"><div class="perf-title">${s.label}${s.tip ? `<span style="font-size:.7rem;color:var(--muted);font-weight:400">${s.tip}</span>` : ''}</div>`;
+    rows.slice(0, 10).forEach((r, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+      const val   = fmt(r[s.stat]);
+      html += `
+        <div class="perf-row">
+          <div class="perf-rank">${medal || '#' + (i+1)}</div>
+          <div class="perf-val ${s.col}">${val}</div>
+          <div class="perf-info">
+            <div class="perf-name">${r.player || '?'}</div>
+            <div class="perf-team">${r.team || ''}</div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  return html || errHTML('No data.');
+}
+
+// ── Player search events ───────────────────────────────────────────────────
+let searchDebounce = null;
+const searchInput = document.getElementById('player-search');
+
+// Show/hide clear button as user types
+searchInput.addEventListener('input', () => {
+  const hasText = searchInput.value.trim().length > 0;
+  document.getElementById('search-clear-btn').style.display = hasText ? 'block' : 'none';
+
+  // Debounced live search — fires 400ms after the user stops typing
+  clearTimeout(searchDebounce);
+  if (hasText) {
+    searchDebounce = setTimeout(doPlayerSearch, 400);
+  } else {
+    clearPlayerSearch();
+  }
+});
+
+// Also search on Enter key immediately
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    clearTimeout(searchDebounce);
+    doPlayerSearch();
+  }
+  if (e.key === 'Escape') {
+    clearPlayerSearch();
+  }
+});
+
+// ── Initial load ───────────────────────────────────────────────────────────
+loadStandings();
+loadPlayerPage(0);
+loadTopPerformers();
+</script>
+</body>
+</html>
